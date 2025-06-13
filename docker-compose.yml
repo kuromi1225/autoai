@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  auto_ai_app:
+    build: .
+    ports:
+      - "80:80"
+    volumes:
+      - .:/usr/src/app
+    # Add environment variables or other configurations as needed
+    # environment:
+    #   - PYTHONUNBUFFERED=1
+      # Ensures that Python output is sent straight to terminal without being buffered first, useful for logging
