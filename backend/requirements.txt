@@ -1,0 +1,84 @@
+# Core Flask dependencies
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-SocketIO==5.3.6
+python-socketio==5.9.0
+
+# AI/ML dependencies
+torch==2.1.0
+transformers==4.35.0
+accelerate==0.24.1
+bitsandbytes==0.41.1
+
+# Database
+SQLAlchemy==2.0.23
+Flask-SQLAlchemy==3.1.1
+psycopg2-binary==2.9.7
+alembic==1.12.1
+
+# Redis
+redis==5.0.1
+celery==5.3.4
+
+# GitHub integration
+PyGithub==1.59.1
+GitPython==3.1.40
+
+# HTTP requests
+requests==2.31.0
+httpx==0.25.2
+
+# JSON/YAML processing
+pyyaml==6.0.1
+jsonschema==4.19.2
+
+# Graph analysis
+networkx==3.2.1
+
+# Logging and monitoring
+structlog==23.2.0
+prometheus-client==0.19.0
+
+# Security
+paramiko==3.5.0
+cryptography==43.0.3
+PyJWT==2.8.0
+bcrypt==4.1.1
+psutil==6.1.0
+
+# Utilities
+python-dotenv==1.0.0
+click==8.1.7
+marshmallow==3.20.1
+python-dateutil==2.8.2
+
+# Development
+pytest==7.4.3
+pytest-flask==1.3.0
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
+
+# MCP Protocol
+pydantic==2.5.0
+websockets==12.0
+aiohttp==3.9.1
+
+
+
+gunicorn
+eventlet
+
+
+
+# Web browsing dependencies
+requests
+beautifulsoup4
+lxml
+
+
+# Memory management dependencies
+sentence-transformers
+chromadb
+numpy
+
