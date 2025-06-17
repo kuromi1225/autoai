@@ -174,16 +174,28 @@ check_port_conflicts() {
 # Docker Composeサービスの起動
 start_services() {
     log_info "Devin AI Cloneサービスを起動しています..."
-    
+
     # 既存のコンテナを停止・削除
-    $DOCKER_COMPOSE_CMD down --remove-orphans 2>/dev/null || true
+    if [ "$DOCKER_COMPOSE_CMD" = "docker-compose" ]; then
+        env DOCKER_HOST=unix:///var/run/docker.sock $DOCKER_COMPOSE_CMD down --remove-orphans 2>/dev/null || true
+    else
+        $DOCKER_COMPOSE_CMD down --remove-orphans 2>/dev/null || true
+    fi
     
     # イメージのビルドと起動
     log_info "Dockerイメージをビルドしています..."
-    $DOCKER_COMPOSE_CMD build --no-cache
+    if [ "$DOCKER_COMPOSE_CMD" = "docker-compose" ]; then
+        env DOCKER_HOST=unix:///var/run/docker.sock $DOCKER_COMPOSE_CMD build --no-cache
+    else
+        $DOCKER_COMPOSE_CMD build --no-cache
+    fi
     
     log_info "サービスを起動しています..."
-    $DOCKER_COMPOSE_CMD up -d
+    if [ "$DOCKER_COMPOSE_CMD" = "docker-compose" ]; then
+        env DOCKER_HOST=unix:///var/run/docker.sock $DOCKER_COMPOSE_CMD up -d
+    else
+        $DOCKER_COMPOSE_CMD up -d
+    fi
     
     log_success "サービスの起動が完了しました"
 }

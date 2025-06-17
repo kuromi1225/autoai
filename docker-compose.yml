@@ -27,7 +27,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: devin-redis
-    command: sh -c "redis-server --requirepass \"$(cat /run/secrets/redis_password)\" --appendonly yes"
+    command: sh -c "redis-server --requirepass \"$$(cat /run/secrets/redis_password)\" --appendonly yes"
     secrets:
       - redis_password
     volumes:
@@ -35,7 +35,7 @@ services:
     networks:
       - devin-ai-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$(cat /run/secrets/redis_password)", "ping"]
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$$(cat /run/secrets/redis_password)", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
