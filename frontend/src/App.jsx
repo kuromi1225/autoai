@@ -1,120 +1,63 @@
-import React, { useEffect, useMemo } from 'react'
-import { useAppStore } from '@/store/appStore'
-import LoginPage from '@/components/LoginPage'
-import SettingsPage from '@/components/SettingsPage'
-import MainChatInterface from '@/components/MainChatInterface'
-import { Toaster } from '@/components/ui/sonner'
-import { toast } from 'sonner'
+import { useEffect, useMemo, useState } from 'react';
+import { Toaster } from 'sonner';
+import { useAppStore } from './store/appStore';
+import LoginPage from './components/LoginPage';
+import MainChatInterface from './components/MainChatInterface';
+import SettingsPage from './components/SettingsPage';
+import PlanReviewDialog from './components/PlanReviewDialog';
 
 function App() {
-  // Zustandストアから必要な状態とアクションを取得
-  const store = useAppStore()
-  
-  // 状態を安定化するためにuseMemoを使用
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // Zustandストアから状態とアクションを一度に取得
   const {
     currentView,
     isAuthenticated,
-    error,
-    systemStatus,
+    showPlanDialog,
     actions
-  } = useMemo(() => ({
-    currentView: store.currentView,
-    isAuthenticated: store.isAuthenticated,
-    error: store.error,
-    systemStatus: store.systemStatus,
-    actions: store.actions
-  }), [store.currentView, store.isAuthenticated, store.error, store.systemStatus, store.actions])
-  
-  // アプリケーション初期化
+  } = useAppStore(state => ({
+    currentView: state.currentView,
+    isAuthenticated: state.isAuthenticated,
+    showPlanDialog: state.showPlanDialog,
+    actions: state.actions,
+  }));
+
   useEffect(() => {
-    // 認証情報の復元
-    actions.initializeAuth()
-  }, [actions])
-  
-  // エラー通知
-  useEffect(() => {
-    if (error) {
-      toast.error(error)
-      // エラーを表示後にクリア
-      const timer = setTimeout(() => {
-        actions.setError(null)
-      }, 5000)
-      
-      return () => clearTimeout(timer)
-    }
-  }, [error, actions])
-  
-  // バックエンドヘルスチェック
-  useEffect(() => {
-    const checkHealth = async () => {
-      await actions.checkBackendHealth()
-    }
-    
-    // 初回チェック
-    checkHealth()
-    
-    // 定期的なヘルスチェック
-    const interval = setInterval(checkHealth, 30000) // 30秒ごと
-    
-    return () => clearInterval(interval)
-  }, [actions])
-  
-  // 認証トークンの自動リフレッシュ
-  useEffect(() => {
-    if (!isAuthenticated) return
-    
-    const refreshInterval = setInterval(async () => {
-      const success = await actions.refreshAuth()
-      if (!success) {
-        toast.error('セッションが期限切れです。再度ログインしてください。')
-      }
-    }, 25 * 60 * 1000) // 25分ごと（トークンの有効期限30分より前）
-    
-    return () => clearInterval(refreshInterval)
-  }, [isAuthenticated, actions])
-  
-  // Git設定の読み込み
-  useEffect(() => {
-    if (isAuthenticated) {
-      actions.loadGitSettings()
-    }
-  }, [isAuthenticated, actions])
-  
-  // バックエンド接続状態の監視
-  useEffect(() => {
-    if (!systemStatus.backend_connected) {
-      toast.warning('バックエンドサーバーとの接続が不安定です')
-    }
-  }, [systemStatus.backend_connected])
-  
-  // 認証状態に基づくビューの決定
-  if (!isAuthenticated) {
+    // アプリケーション起動時に一度だけ認証状態を初期化
+    actions.initializeAuth();
+    setIsInitializing(false);
+  }, [actions]);
+
+  // 初期化中はローディングスピナーなどを表示
+  if (isInitializing) {
     return (
-      <>
-        <LoginPage />
-        <Toaster position="top-right" />
-      </>
-    )
+      <div className="flex h-screen w-screen items-center justify-center">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
   }
-  
-  // 認証済みユーザーのビュー
+
   const renderCurrentView = () => {
+    if (!isAuthenticated) {
+      return <LoginPage />;
+    }
+    
     switch (currentView) {
       case 'settings':
-        return <SettingsPage />
+        return <SettingsPage />;
       case 'main':
       default:
-        return <MainChatInterface />
+        return <MainChatInterface />;
     }
-  }
-  
+  };
+
   return (
     <>
       {renderCurrentView()}
-      <Toaster position="top-right" />
+      {showPlanDialog && <PlanReviewDialog />}
+      <Toaster />
     </>
-  )
+  );
 }
 
-export default App
-
+export default App;
