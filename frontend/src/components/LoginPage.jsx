@@ -22,7 +22,7 @@ const LoginPage = () => {
   useEffect(() => {
     const fetchDemoUsers = async () => {
       try {
-        const response = await fetch('http://localhost:8765/api/auth/users')
+        const response = await fetch('/api/auth/users')
         if (response.ok) {
           const data = await response.json()
           setDemoUsers(data.demo_users || [])
@@ -46,7 +46,7 @@ const LoginPage = () => {
     setIsLoading(true)
 
     try {
-      const response = await fetch('http://localhost:8765/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

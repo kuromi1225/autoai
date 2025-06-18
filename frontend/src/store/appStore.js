@@ -137,7 +137,7 @@ export const useAppStore = create(
           // バックエンドヘルスチェック
           checkBackendHealth: async () => {
             try {
-              const response = await fetch('http://localhost:8765/health')
+              const response = await fetch('/health')
               const data = await response.json()
               
               set((state) => {
@@ -159,7 +159,7 @@ export const useAppStore = create(
             if (!authToken) return false
 
             try {
-              const response = await fetch('http://localhost:8765/api/auth/refresh', {
+              const response = await fetch('/api/auth/refresh', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
