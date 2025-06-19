@@ -61,9 +61,9 @@ const MainChatInterface = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault()
     
-    if (!inputMessage.trim()) return
+    if (!(inputMessage || '').trim()) return
     
-    const message = inputMessage.trim()
+    const message = (inputMessage || '').trim()
     actions.setInputMessage('')
     
     await actions.sendMessage(message)

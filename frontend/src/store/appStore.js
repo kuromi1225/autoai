@@ -99,7 +99,7 @@ export const useAppStore = create(
           setCurrentPlan: (plan) => set({ currentPlan: plan }),
 
           sendMessage: async (messageContent) => {
-            if (!messageContent.trim()) return;
+            if (!(messageContent || '').trim()) return;
 
             get().actions.addMessage({ type: 'user', content: messageContent });
             get().actions.setIsTyping(true);
