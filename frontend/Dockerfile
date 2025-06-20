@@ -5,13 +5,16 @@ FROM node:20-alpine as build
 WORKDIR /app
 
 # Copy package files
-COPY package*.json pnpm-lock.yaml ./
+COPY package*.json ./
 
 # Install pnpm
 RUN npm install -g pnpm
 
+# Generate pnpm-lock.yaml if it doesn't exist
+RUN if [ ! -f pnpm-lock.yaml ]; then pnpm install --lockfile-only; fi
+
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Copy source code
 COPY . .

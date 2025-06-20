@@ -1,160 +1,294 @@
+/**
+ * Zustand State Management Store
+ * 
+ * アプリケーション全体の状態管理を行うZustandストア
+ */
+
+import { create } from 'zustand'
+import { devtools, persist } from 'zustand/middleware'
+import { immer } from 'zustand/middleware/immer'
+
+// Zustandストアの作成
 export const useAppStore = create(
   devtools(
     persist(
       immer((set, get) => ({
-        // --- 状態 (State) ---
+        // 認証状態
         isAuthenticated: false,
         user: null,
         authToken: null,
+
+        // UI状態
         currentView: 'login', // 'login', 'main', 'settings'
-        error: null,
-        loading: false,
+        sidebarOpen: true,
+        theme: 'light',
+
+        // システム状態
         systemStatus: {
           backend_connected: false,
+          ai_model_loaded: false,
+          github_connected: false
         },
-        
-        // チャット関連の状態
-        messages: [],
-        inputMessage: '', // ★ inputMessage を初期化
-        isTyping: false,
-        
-        // 計画関連の状態
-        currentPlan: null,
-        showPlanDialog: false,
-        planExecutionStatus: 'idle', // idle, running, completed, error
-        executionLogs: [],
 
-        // --- アクション (Actions) ---
+        // エラー状態
+        error: null,
+        loading: false,
+
+        // チャット状態
+        messages: [],
+        currentTask: null,
+        taskHistory: [],
+
+        // プロジェクト状態
+        currentProject: null,
+        projects: [],
+
+        // Git設定
+        gitSettings: {
+          username: '',
+          email: '',
+          token: ''
+        },
+
+        // アクション
         actions: {
-          // --- 認証関連 ---
-          setAuthenticated: (authenticated) => set((state) => {
-            state.isAuthenticated = authenticated;
-            if (!authenticated) {
-              state.user = null;
-              state.authToken = null;
-              state.currentView = 'login';
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('user_info');
-            }
-          }),
-          setUser: (user) => set({ user }),
-          setAuthToken: (token) => set({ authToken: token }),
+          // 認証関連
+          setAuthenticated: (authenticated) => {
+            set((state) => {
+              state.isAuthenticated = authenticated
+              if (!authenticated) {
+                state.user = null
+                state.authToken = null
+                state.currentView = 'login'
+                // ローカルストレージからも削除
+                if (typeof window !== 'undefined') {
+                  localStorage.removeItem('auth_token')
+                  localStorage.removeItem('user_info')
+                }
+              }
+            })
+          },
+
+          setUser: (user) => {
+            set((state) => {
+              state.user = user
+            })
+          },
+
+          setAuthToken: (token) => {
+            set((state) => {
+              state.authToken = token
+              if (typeof window !== 'undefined') {
+                if (token) {
+                  localStorage.setItem('auth_token', token)
+                } else {
+                  localStorage.removeItem('auth_token')
+                }
+              }
+            })
+          },
+
+          // 初期化時にローカルストレージから認証情報を復元
           initializeAuth: () => {
-            const token = localStorage.getItem('auth_token');
-            const userInfo = localStorage.getItem('user_info');
-            if (token && userInfo) {
-              try {
-                set({
-                  isAuthenticated: true,
-                  user: JSON.parse(userInfo),
-                  authToken: token,
-                  currentView: 'main'
-                });
-              } catch (e) {
-                console.error("Failed to parse auth info", e);
-                get().actions.logout();
+            if (typeof window !== 'undefined') {
+              const token = localStorage.getItem('auth_token')
+              const userInfo = localStorage.getItem('user_info')
+              
+              if (token && userInfo) {
+                try {
+                  const user = JSON.parse(userInfo)
+                  set((state) => {
+                    state.isAuthenticated = true
+                    state.user = user
+                    state.authToken = token
+                    state.currentView = 'main'
+                  })
+                } catch (error) {
+                  console.error('認証情報の復元に失敗:', error)
+                  // 無効なデータの場合はクリア
+                  localStorage.removeItem('auth_token')
+                  localStorage.removeItem('user_info')
+                }
               }
             }
           },
-          logout: () => {
-            set({
-              isAuthenticated: false,
-              user: null,
-              authToken: null,
-              currentView: 'login'
-            });
-            localStorage.clear();
-            toast.info("ログアウトしました。");
+
+          // UI状態
+          setCurrentView: (view) => {
+            set((state) => {
+              state.currentView = view
+            })
           },
 
-          // --- UI関連 ---
-          setCurrentView: (view) => set({ currentView: view }),
-          setError: (error) => set({ error }),
-          setLoading: (loading) => set({ loading }),
-          
-          // --- システム関連 ---
+          setSidebarOpen: (open) => {
+            set((state) => {
+              state.sidebarOpen = open
+            })
+          },
+
+          setTheme: (theme) => {
+            set((state) => {
+              state.theme = theme
+            })
+          },
+
+          // エラー処理
+          setError: (error) => {
+            set((state) => {
+              state.error = error
+            })
+          },
+
+          setLoading: (loading) => {
+            set((state) => {
+              state.loading = loading
+            })
+          },
+
+          // システム状態
+          setSystemStatus: (status) => {
+            set((state) => {
+              state.systemStatus = { ...state.systemStatus, ...status }
+            })
+          },
+
+          // バックエンドヘルスチェック
           checkBackendHealth: async () => {
             try {
-              const response = await fetch('/api/health');
-              set(state => { 
-                state.systemStatus.backend_connected = response.ok;
-              });
-            } catch (error) {
-              set(state => { 
-                state.systemStatus.backend_connected = false; 
-              });
-            }
-          },
-
-          // --- チャット・計画関連 ---
-          setInputMessage: (message) => set({ inputMessage: message }),
-          addMessage: (message) => {
-            const newMessage = { ...message, id: Date.now(), timestamp: new Date() };
-            set((state) => {
-              state.messages.push(newMessage);
-            });
-          },
-          setIsTyping: (typing) => set({ isTyping: typing }),
-          setShowPlanDialog: (show) => set({ showPlanDialog: show }),
-          setCurrentPlan: (plan) => set({ currentPlan: plan }),
-
-          sendMessage: async (messageContent) => {
-            if (!messageContent.trim()) return;
-
-            get().actions.addMessage({ type: 'user', content: messageContent });
-            get().actions.setIsTyping(true);
-            
-            try {
-              const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${get().authToken}`
-                },
-                body: JSON.stringify({ message: messageContent }),
-              });
-
-              if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+              const response = await fetch('http://localhost:8766/health')
+              const data = await response.json()
               
-              const data = await res.json();
-              get().actions.addMessage({ type: 'assistant', content: data.response });
-
-              if (data.plan) {
-                get().actions.setCurrentPlan(data.plan);
-                get().actions.setShowPlanDialog(true);
-              }
+              set((state) => {
+                state.systemStatus.backend_connected = response.ok
+              })
+              
+              return response.ok
             } catch (error) {
-              console.error("Send message error:", error);
-              get().actions.addMessage({ type: 'system', content: 'メッセージの送信に失敗しました。' });
-              toast.error("メッセージの送信に失敗しました。");
-            } finally {
-              get().actions.setIsTyping(false);
+              set((state) => {
+                state.systemStatus.backend_connected = false
+              })
+              return false
             }
           },
 
-          executePlan: async (planId) => {
-            set({ planExecutionStatus: 'running', executionLogs: [] });
-            toast.info(`計画 ${planId} の実行を開始します。`);
-            
+          // 認証トークンのリフレッシュ
+          refreshAuth: async () => {
+            const { authToken } = get()
+            if (!authToken) return false
+
             try {
-                const res = await fetch('/api/execute_plan', {
-                    method: 'POST',
-                    headers: { 
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${get().authToken}`
-                    },
-                    body: JSON.stringify({ plan_id: planId }),
-                });
+              const response = await fetch('http://localhost:8766/api/auth/refresh', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${authToken}`
+                }
+              })
 
-                if (!res.ok) throw new Error('Plan execution failed to start');
+              if (response.ok) {
+                const data = await response.json()
+                if (data.success) {
+                  set((state) => {
+                    state.authToken = data.token
+                  })
+                  localStorage.setItem('auth_token', data.token)
+                  return true
+                }
+              }
+              
+              // リフレッシュ失敗時はログアウト
+              get().actions.setAuthenticated(false)
+              return false
+            } catch (error) {
+              console.error('トークンリフレッシュエラー:', error)
+              get().actions.setAuthenticated(false)
+              return false
+            }
+          },
 
-                const data = await res.json();
-                get().actions.addMessage({ type: 'system', content: data.message });
+          // チャット関連
+          addMessage: (message) => {
+            set((state) => {
+              state.messages.push({
+                id: Date.now(),
+                timestamp: new Date().toISOString(),
+                ...message
+              })
+            })
+          },
 
-            } catch(e) {
-                console.error("Execute plan error:", e);
-                set({ planExecutionStatus: 'error' });
-                toast.error("計画の実行開始に失敗しました。");
+          clearMessages: () => {
+            set((state) => {
+              state.messages = []
+            })
+          },
+
+          // タスク関連
+          setCurrentTask: (task) => {
+            set((state) => {
+              state.currentTask = task
+            })
+          },
+
+          addTaskToHistory: (task) => {
+            set((state) => {
+              state.taskHistory.unshift({
+                id: Date.now(),
+                timestamp: new Date().toISOString(),
+                ...task
+              })
+              // 履歴は最大100件まで
+              if (state.taskHistory.length > 100) {
+                state.taskHistory = state.taskHistory.slice(0, 100)
+              }
+            })
+          },
+
+          // プロジェクト関連
+          setCurrentProject: (project) => {
+            set((state) => {
+              state.currentProject = project
+            })
+          },
+
+          setProjects: (projects) => {
+            set((state) => {
+              state.projects = projects
+            })
+          },
+
+          // Git設定
+          setGitSettings: (settings) => {
+            set((state) => {
+              state.gitSettings = { ...state.gitSettings, ...settings }
+            })
+          },
+
+          loadGitSettings: () => {
+            // Git設定をローカルストレージから読み込み
+            if (typeof window !== 'undefined') {
+              const savedSettings = localStorage.getItem('git_settings')
+              if (savedSettings) {
+                try {
+                  const settings = JSON.parse(savedSettings)
+                  set((state) => {
+                    state.gitSettings = { ...state.gitSettings, ...settings }
+                  })
+                } catch (error) {
+                  console.error('Git設定の読み込みに失敗:', error)
+                }
+              }
+            }
+          },
+
+          saveGitSettings: (settings) => {
+            set((state) => {
+              state.gitSettings = { ...state.gitSettings, ...settings }
+            })
+            
+            // ローカルストレージに保存
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('git_settings', JSON.stringify(get().gitSettings))
             }
           }
         }
@@ -163,12 +297,14 @@ export const useAppStore = create(
         name: 'devin-ai-store',
         partialize: (state) => ({
           theme: state.theme,
-          // 認証情報などを永続化
-          isAuthenticated: state.isAuthenticated,
-          user: state.user,
-          authToken: state.authToken
-        }),
+          sidebarOpen: state.sidebarOpen,
+          gitSettings: state.gitSettings
+        })
       }
-    )
+    ),
+    {
+      name: 'devin-ai-store'
+    }
   )
-);
+)
+
