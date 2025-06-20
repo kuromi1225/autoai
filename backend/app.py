@@ -15,6 +15,10 @@ import redis
 import asyncio
 from datetime import datetime
 
+# 新しいインポート
+from models import db
+from api_routes import register_api_routes, init_ai_system
+
 # 認証サービスのインポート
 from services.auth_service import AuthService, require_auth, require_role
 
@@ -41,7 +45,8 @@ class Config:
     db_host = os.environ.get('DB_HOST', 'postgres')
     db_port = os.environ.get('DB_PORT', '5432')
     db_name = os.environ.get('DB_NAME', 'devin_ai_clone')
-    DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Redis接続URLを環境変数とシークレットから構築
     redis_host = os.environ.get('REDIS_HOST', 'redis')
@@ -51,6 +56,144 @@ class Config:
         REDIS_URL = f"redis://:{redis_password}@{redis_host}:{redis_port}/0"
     else:
         REDIS_URL = f"redis://{redis_host}:{redis_port}/0"
+
+    # その他の設定
+    GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+    QWEN_MODEL_PATH = os.environ.get("QWEN_MODEL_PATH", "/app/models/qwen")
+    WORKSPACE_DIR = os.environ.get("WORKSPACE_DIR", "/app/workspace")
+
+# --- 修正箇所: 終了 ---
+
+# Flaskアプリケーションの作成
+app = Flask(__name__)
+app.config.from_object(Config)
+
+# データベース初期化
+db.init_app(app)
+
+# CORS設定
+CORS(app, origins="*")
+
+# 認証サービスの初期化
+auth_service = AuthService(app)
+app.auth_service = auth_service
+
+# SocketIO設定
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', message_queue=app.config['REDIS_URL'])
+
+# Celery設定
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=app.config["REDIS_URL"],
+        broker=app.config["REDIS_URL"]
+    )
+    celery.conf.update(app.config)
+    return celery
+
+celery = make_celery(app)
+
+# Redis接続
+try:
+    redis_client = redis.from_url(app.config["REDIS_URL"], decode_responses=True)
+    redis_client.ping() # 接続テスト
+    logging.info("Successfully connected to Redis.")
+except redis.exceptions.ConnectionError as e:
+    logging.error(f"Failed to connect to Redis: {e}")
+    redis_client = None
+
+# ログ設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# API ルートを登録
+register_api_routes(app, socketio)
+
+# AI システムを初期化
+init_ai_system(app)
+
+# 既存のルート（認証関連）
+@app.route('/health')
+def health_check():
+    """ヘルスチェックエンドポイント"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.utcnow().isoformat(),
+        'version': '1.0.0'
+    })
+
+@app.route('/api/auth/users')
+def get_demo_users():
+    """デモユーザー一覧を取得"""
+    demo_users = [
+        {
+            'id': 'admin',
+            'username': 'admin',
+            'email': 'admin@example.com',
+            'role': 'admin',
+            'display_name': 'Administrator'
+        },
+        {
+            'id': 'user',
+            'username': 'user',
+            'email': 'user@example.com',
+            'role': 'user',
+            'display_name': 'Regular User'
+        }
+    ]
+    return jsonify(demo_users)
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """ログイン処理"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    # デモ用の簡単な認証
+    if username in ['admin', 'user'] and password in ['admin', 'password']:
+        # JWTトークンを生成（実装は後で）
+        token = f"demo_token_{username}"
+        
+        return jsonify({
+            'success': True,
+            'token': token,
+            'user': {
+                'id': username,
+                'username': username,
+                'email': f'{username}@example.com',
+                'role': 'admin' if username == 'admin' else 'user'
+            }
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'Invalid credentials'
+        }), 401
+
+@app.route('/api/auth/refresh', methods=['POST'])
+def refresh_token():
+    """トークンリフレッシュ"""
+    # 簡単な実装
+    return jsonify({
+        'success': True,
+        'token': 'refreshed_token'
+    })
+
+# データベーステーブルの作成
+@app.before_first_request
+def create_tables():
+    """アプリケーション起動時にデータベーステーブルを作成"""
+    try:
+        db.create_all()
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+
+if __name__ == '__main__':
+    # 開発環境での実行
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
 
     # その他の設定
     GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
