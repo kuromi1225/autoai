@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,7 +18,7 @@ import {
   WifiOff
 } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
-import PlanReviewDialog from '@/components/PlanReviewDialog'
+// import PlanReviewDialog from '@/components/PlanReviewDialog'
 
 const MainChatInterface = () => {
   const messagesEndRef = useRef(null)
@@ -36,16 +36,16 @@ const MainChatInterface = () => {
     systemStatus,
     actions
   } = useAppStore(state => ({
-    user: state.user,
-    messages: state.messages,
-    inputMessage: state.inputMessage,
-    isTyping: state.isTyping,
-    currentPlan: state.currentPlan,
-    showPlanDialog: state.showPlanDialog,
-    planExecutionStatus: state.planExecutionStatus,
-    executionLogs: state.executionLogs,
-    systemStatus: state.systemStatus,
-    actions: state.actions
+    user: state.user || {},
+    messages: state.messages || [],
+    inputMessage: state.inputMessage || '',
+    isTyping: state.isTyping || false,
+    currentPlan: state.currentPlan || null,
+    showPlanDialog: state.showPlanDialog || false,
+    planExecutionStatus: state.planExecutionStatus || 'idle',
+    executionLogs: state.executionLogs || [],
+    systemStatus: state.systemStatus || {},
+    actions: state.actions || {}
   }))
   
   // メッセージが追加されたら自動スクロール
@@ -195,7 +195,7 @@ const MainChatInterface = () => {
                          message.type === 'assistant' ? 'Devin AI' : 'システム'}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {message.timestamp.toLocaleTimeString()}
+                        {new Date(message.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="text-gray-700 whitespace-pre-wrap">
@@ -289,6 +289,7 @@ const MainChatInterface = () => {
       </div>
       
       {/* 計画レビューダイアログ */}
+      {/* 
       <PlanReviewDialog
         open={showPlanDialog}
         onOpenChange={actions.setShowPlanDialog}
@@ -298,22 +299,15 @@ const MainChatInterface = () => {
             const success = await actions.executePlan(currentPlan.plan_id)
             if (success) {
               actions.setShowPlanDialog(false)
-              actions.addMessage({
-                type: 'system',
-                content: '計画が承認されました。実行を開始します。'
-              })
             }
           }
         }}
         onReject={() => {
           actions.setShowPlanDialog(false)
           actions.setCurrentPlan(null)
-          actions.addMessage({
-            type: 'system',
-            content: '計画が拒否されました。'
-          })
         }}
       />
+      */}
     </div>
   )
 }
