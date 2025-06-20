@@ -36,8 +36,16 @@ export const useAppStore = create(
 
         // チャット状態
         messages: [],
+        inputMessage: '',
+        isTyping: false,
         currentTask: null,
         taskHistory: [],
+
+        // 計画実行状態
+        currentPlan: null,
+        showPlanDialog: false,
+        planExecutionStatus: 'idle', // 'idle', 'running', 'completed', 'error'
+        executionLogs: [],
 
         // プロジェクト状態
         currentProject: null,
@@ -189,10 +197,18 @@ export const useAppStore = create(
           },
 
           // チャット関連
+          setInputMessage: (message) => set((state) => {
+            state.inputMessage = message
+          }),
+
+          setIsTyping: (typing) => set((state) => {
+            state.isTyping = typing
+          }),
+
           addMessage: (message) => set((state) => {
             state.messages.push({
               id: Date.now(),
-              timestamp: new Date().toISOString(),
+              timestamp: new Date(),
               ...message
             })
           }),
@@ -200,6 +216,123 @@ export const useAppStore = create(
           clearMessages: () => set((state) => {
             state.messages = []
           }),
+
+          // 計画実行関連
+          setCurrentPlan: (plan) => set((state) => {
+            state.currentPlan = plan
+          }),
+
+          setShowPlanDialog: (show) => set((state) => {
+            state.showPlanDialog = show
+          }),
+
+          setPlanExecutionStatus: (status) => set((state) => {
+            state.planExecutionStatus = status
+          }),
+
+          addExecutionLog: (log) => set((state) => {
+            state.executionLogs.push(log)
+          }),
+
+          clearExecutionLogs: () => set((state) => {
+            state.executionLogs = []
+          }),
+
+          // メッセージ送信
+          sendMessage: async (message) => {
+            const { authToken } = get()
+            
+            // ユーザーメッセージを追加
+            get().actions.addMessage({
+              type: 'user',
+              content: message
+            })
+
+            // タイピング状態を開始
+            get().actions.setIsTyping(true)
+
+            try {
+              // バックエンドにメッセージを送信
+              const response = await fetch('/api/chat/message', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ message })
+              })
+
+              if (response.ok) {
+                const data = await response.json()
+                
+                // AIの応答を追加
+                get().actions.addMessage({
+                  type: 'assistant',
+                  content: data.response
+                })
+
+                // 計画が含まれている場合は表示
+                if (data.plan) {
+                  get().actions.setCurrentPlan(data.plan)
+                  get().actions.setShowPlanDialog(true)
+                }
+              } else {
+                get().actions.addMessage({
+                  type: 'system',
+                  content: 'メッセージの送信に失敗しました。'
+                })
+              }
+            } catch (error) {
+              console.error('メッセージ送信エラー:', error)
+              get().actions.addMessage({
+                type: 'system',
+                content: 'ネットワークエラーが発生しました。'
+              })
+            } finally {
+              // タイピング状態を終了
+              get().actions.setIsTyping(false)
+            }
+          },
+
+          // 計画実行
+          executePlan: async (planId) => {
+            const { authToken } = get()
+            
+            try {
+              get().actions.setPlanExecutionStatus('running')
+              get().actions.clearExecutionLogs()
+
+              const response = await fetch('/api/plan/execute', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ plan_id: planId })
+              })
+
+              if (response.ok) {
+                get().actions.setPlanExecutionStatus('completed')
+                return true
+              } else {
+                get().actions.setPlanExecutionStatus('error')
+                return false
+              }
+            } catch (error) {
+              console.error('計画実行エラー:', error)
+              get().actions.setPlanExecutionStatus('error')
+              return false
+            }
+          },
+
+          // ログアウト
+          logout: () => {
+            get().actions.setAuthenticated(false)
+            get().actions.clearMessages()
+            get().actions.clearExecutionLogs()
+            get().actions.setCurrentPlan(null)
+            get().actions.setInputMessage('')
+          },
 
           // タスク関連
           setCurrentTask: (task) => set((state) => {
