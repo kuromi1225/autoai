@@ -91,9 +91,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      no_cache: true  # キャッシュを無効化
     container_name: devin-frontend
-    volumes:
-      - frontend_dist:/usr/share/nginx/html:ro
+    # volumes:
+    #   - frontend_dist:/usr/share/nginx/html:ro  # ボリュームマウントを無効化
     depends_on:
       backend:
         condition: service_healthy

@@ -4,7 +4,7 @@ FROM node:20-alpine as build
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json pnpm-lock.yaml ./
 
 # Install pnpm
@@ -13,8 +13,12 @@ RUN npm install -g pnpm
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
+# Copy source code (ensure all files are included)
 COPY . .
+
+# Ensure we have the latest source files
+RUN ls -la src/store/
+RUN ls -la src/lib/
 
 # Build the application
 RUN pnpm run build
