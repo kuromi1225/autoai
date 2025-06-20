@@ -9,305 +9,210 @@ import {
   Settings, 
   Send, 
   User, 
-  Bot, 
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  LogOut,
-  Wifi,
-  WifiOff
+  Bot,
+  Play,
+  Pause,
+  Square
 } from 'lucide-react'
-import { useAppStore } from '@/store/appStore'
-// import PlanReviewDialog from '@/components/PlanReviewDialog'
+import { useAppStore } from '../store/appStore'
 
 const MainChatInterface = () => {
   const messagesEndRef = useRef(null)
-  const inputRef = useRef(null)
   
   const {
-    user,
-    messages,
-    inputMessage,
-    isTyping,
-    currentPlan,
-    showPlanDialog,
-    planExecutionStatus,
-    executionLogs,
-    systemStatus,
-    actions
-  } = useAppStore(state => ({
-    user: state.user || {},
-    messages: state.messages || [],
-    inputMessage: state.inputMessage || '',
-    isTyping: state.isTyping || false,
-    currentPlan: state.currentPlan || null,
-    showPlanDialog: state.showPlanDialog || false,
-    planExecutionStatus: state.planExecutionStatus || 'idle',
-    executionLogs: state.executionLogs || [],
-    systemStatus: state.systemStatus || {},
-    actions: state.actions || {}
-  }))
-  
+    messages = [],
+    inputMessage = '',
+    isTyping = false,
+    currentPlan = null,
+    showPlanDialog = false,
+    planExecutionStatus = 'idle',
+    executionLogs = [],
+    setInputMessage,
+    setIsTyping,
+    sendMessage,
+    setCurrentPlan,
+    setShowPlanDialog,
+    setPlanExecutionStatus,
+    addExecutionLog,
+    clearExecutionLogs,
+    executePlan,
+    logout
+  } = useAppStore()
+
   // メッセージが追加されたら自動スクロール
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isTyping])
-  
-  // 入力フィールドにフォーカス
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
-  
-  const handleSendMessage = async (e) => {
-    e.preventDefault()
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
+
+  const handleSendMessage = () => {
+    const trimmedMessage = inputMessage?.trim()
+    if (!trimmedMessage) return
     
-    if (!inputMessage.trim()) return
-    
-    const message = inputMessage.trim()
-    actions.setInputMessage('')
-    
-    await actions.sendMessage(message)
+    sendMessage(trimmedMessage)
   }
-  
+
+  const handleInputChange = (e) => {
+    const value = e.target.value
+    if (inputMessage !== value) {
+      setInputMessage(value)
+    }
+  }
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSendMessage(e)
+      handleSendMessage()
     }
   }
-  
-  const getMessageIcon = (type) => {
-    switch (type) {
-      case 'user':
-        return <User className="w-4 h-4" />
-      case 'assistant':
-        return <Bot className="w-4 h-4" />
-      case 'system':
-        return <AlertCircle className="w-4 h-4" />
-      default:
-        return <Bot className="w-4 h-4" />
+
+  const handleLogout = () => {
+    if (typeof logout === 'function') {
+      logout()
     }
   }
-  
-  const getMessageBgColor = (type) => {
-    switch (type) {
-      case 'user':
-        return 'bg-blue-50 border-blue-200'
-      case 'assistant':
-        return 'bg-green-50 border-green-200'
-      case 'system':
-        return 'bg-yellow-50 border-yellow-200'
-      default:
-        return 'bg-gray-50 border-gray-200'
-    }
-  }
-  
-  const getExecutionStatusBadge = () => {
-    switch (planExecutionStatus) {
-      case 'running':
-        return <Badge variant="default" className="bg-blue-500"><Clock className="w-3 h-3 mr-1" />実行中</Badge>
-      case 'completed':
-        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />完了</Badge>
-      case 'error':
-        return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />エラー</Badge>
-      default:
-        return null
-    }
-  }
-  
+
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">Devin AI Clone</h1>
-              <p className="text-sm text-gray-500">自律型AIエージェント</p>
-            </div>
+    <div className="flex h-screen bg-gray-50">
+      {/* メインチャットエリア */}
+      <div className="flex-1 flex flex-col">
+        {/* ヘッダー */}
+        <div className="bg-white border-b px-6 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Devin AI Clone</h1>
+            <p className="text-sm text-gray-500">自律型AIエージェント</p>
           </div>
-          
-          <div className="flex items-center space-x-3">
-            {/* システム状態インジケーター */}
-            <div className="flex items-center space-x-2">
-              {systemStatus.backend_connected ? (
-                <Wifi className="w-4 h-4 text-green-500" title="バックエンド接続中" />
-              ) : (
-                <WifiOff className="w-4 h-4 text-red-500" title="バックエンド未接続" />
-              )}
-            </div>
-            
-            {/* 実行ステータス */}
-            {getExecutionStatusBadge()}
-            
-            {/* ユーザー情報 */}
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <User className="w-4 h-4" />
-              <span>{user?.username}</span>
-              <Badge variant="outline">{user?.role}</Badge>
-            </div>
-            
+          <div className="flex items-center space-x-2">
             {/* 設定ボタン */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => actions.setCurrentView('settings')}
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              設定
+            <Button variant="outline" size="sm">
+              <Settings className="h-4 w-4" />
             </Button>
-            
             {/* ログアウトボタン */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={actions.logout}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={handleLogout}>
               ログアウト
             </Button>
           </div>
         </div>
-      </header>
-      
-      {/* メインコンテンツ */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* チャットエリア */}
-        <div className="flex-1 flex flex-col">
-          {/* メッセージ一覧 */}
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4 max-w-4xl mx-auto">
-              {messages.map((message) => (
+
+        {/* チャットメッセージエリア */}
+        <ScrollArea className="flex-1 p-6">
+          <div className="space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  message.type === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
                 <div
-                  key={message.id}
-                  className={`flex items-start space-x-3 p-4 rounded-lg border ${getMessageBgColor(message.type)}`}
+                  className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                    message.type === 'user'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white border shadow-sm'
+                  }`}
                 >
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border flex items-center justify-center">
-                    {getMessageIcon(message.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-sm font-medium text-gray-900">
-                        {message.type === 'user' ? user?.username : 
-                         message.type === 'assistant' ? 'Devin AI' : 'システム'}
-                      </span>
+                  <div className="flex items-start space-x-2">
+                    {message.type === 'assistant' && (
+                      <Bot className="h-5 w-5 mt-0.5 text-gray-500" />
+                    )}
+                    {message.type === 'user' && (
+                      <User className="h-5 w-5 mt-0.5 text-white" />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm">{message.content}</p>
                       <span className="text-xs text-gray-500">
                         {new Date(message.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
-                    <div className="text-gray-700 whitespace-pre-wrap">
-                      {message.content}
-                    </div>
                   </div>
                 </div>
-              ))}
-              
-              {/* タイピングインジケーター */}
-              {isTyping && (
-                <div className="flex items-start space-x-3 p-4 rounded-lg border bg-green-50 border-green-200">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border flex items-center justify-center">
-                    <Bot className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-sm font-medium text-gray-900">Devin AI</span>
-                    </div>
+              </div>
+            ))}
+            
+            {/* タイピングインジケーター */}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white border shadow-sm rounded-lg px-4 py-2">
+                  <div className="flex items-center space-x-2">
+                    <Bot className="h-5 w-5 text-gray-500" />
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                     </div>
                   </div>
                 </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-          
-          {/* 入力エリア */}
-          <div className="border-t border-gray-200 bg-white p-4">
-            <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto">
-              <div className="flex space-x-3">
-                <Input
-                  ref={inputRef}
-                  value={inputMessage}
-                  onChange={(e) => actions.setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="メッセージを入力してください..."
-                  disabled={isTyping}
-                  className="flex-1"
-                />
-                <Button 
-                  type="submit" 
-                  disabled={!inputMessage.trim() || isTyping}
-                  size="sm"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
               </div>
-            </form>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+
+        {/* 入力エリア */}
+        <div className="bg-white border-t p-4">
+          <div className="flex space-x-2">
+            <div className="flex-1">
+              <Input
+                value={inputMessage || ''}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                placeholder="メッセージを入力..."
+                disabled={isTyping}
+              />
+            </div>
+            <Button 
+              onClick={handleSendMessage}
+              disabled={!inputMessage?.trim() || isTyping}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        
-        {/* サイドパネル（実行ログ） */}
-        {(planExecutionStatus !== 'idle' || executionLogs.length > 0) && (
-          <>
-            <Separator orientation="vertical" />
-            <div className="w-80 bg-white border-l border-gray-200">
-              <Card className="h-full rounded-none border-0">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center space-x-2">
-                    <Clock className="w-4 h-4" />
-                    <span>実行ログ</span>
-                    {getExecutionStatusBadge()}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <ScrollArea className="h-96">
-                    <div className="space-y-2">
-                      {executionLogs.map((log, index) => (
-                        <div key={index} className="text-xs text-gray-600 font-mono bg-gray-50 p-2 rounded">
-                          {log}
-                        </div>
-                      ))}
-                      {executionLogs.length === 0 && (
-                        <div className="text-xs text-gray-400 text-center py-4">
-                          実行ログはありません
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        )}
       </div>
-      
-      {/* 計画レビューダイアログ */}
-      {/* 
-      <PlanReviewDialog
-        open={showPlanDialog}
-        onOpenChange={actions.setShowPlanDialog}
-        plan={currentPlan}
-        onApprove={async () => {
-          if (currentPlan) {
-            const success = await actions.executePlan(currentPlan.plan_id)
-            if (success) {
-              actions.setShowPlanDialog(false)
-            }
-          }
-        }}
-        onReject={() => {
-          actions.setShowPlanDialog(false)
-          actions.setCurrentPlan(null)
-        }}
-      />
-      */}
+
+      {/* サイドパネル（計画実行状況） */}
+      <div className="w-80 bg-white border-l">
+        <div className="p-4">
+          <h2 className="text-lg font-semibold mb-4">実行状況</h2>
+          
+          {currentPlan && (
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-sm">現在の計画</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">{currentPlan}</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Badge variant={planExecutionStatus === 'running' ? 'default' : 'secondary'}>
+                    {planExecutionStatus}
+                  </Badge>
+                  {planExecutionStatus === 'running' && (
+                    <Button size="sm" variant="outline">
+                      <Pause className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 実行ログ */}
+          <div>
+            <h3 className="text-sm font-medium mb-2">実行ログ</h3>
+            <ScrollArea className="h-64 border rounded p-2">
+              <div className="space-y-1">
+                {executionLogs.map((log, index) => (
+                  <div key={index} className="text-xs text-gray-600">
+                    <span className="text-gray-400">{log.timestamp}</span> {log.message}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

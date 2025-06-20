@@ -198,16 +198,22 @@ export const useAppStore = create(
 
           // チャット関連
           setInputMessage: (message) => set((state) => {
-            state.inputMessage = message
+            // 前回と同じ値なら更新しない
+            if (state.inputMessage !== message) {
+              state.inputMessage = message
+            }
           }),
 
           setIsTyping: (typing) => set((state) => {
-            state.isTyping = typing
+            // 前回と同じ値なら更新しない
+            if (state.isTyping !== typing) {
+              state.isTyping = typing
+            }
           }),
 
           addMessage: (message) => set((state) => {
             state.messages.push({
-              id: Date.now(),
+              id: Date.now() + Math.random(),
               timestamp: new Date(),
               ...message
             })
@@ -240,12 +246,17 @@ export const useAppStore = create(
 
           // メッセージ送信
           sendMessage: async (message) => {
+            // ガード条件を追加
+            if (!message || !message.trim()) {
+              return false
+            }
+            
             const { authToken } = get()
             
             // ユーザーメッセージを追加
             get().actions.addMessage({
               type: 'user',
-              content: message
+              content: message.trim()
             })
 
             // タイピング状態を開始
@@ -259,7 +270,7 @@ export const useAppStore = create(
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${authToken}`
                 },
-                body: JSON.stringify({ message })
+                body: JSON.stringify({ message: message.trim() })
               })
 
               if (response.ok) {
@@ -276,11 +287,14 @@ export const useAppStore = create(
                   get().actions.setCurrentPlan(data.plan)
                   get().actions.setShowPlanDialog(true)
                 }
+                
+                return true
               } else {
                 get().actions.addMessage({
                   type: 'system',
                   content: 'メッセージの送信に失敗しました。'
                 })
+                return false
               }
             } catch (error) {
               console.error('メッセージ送信エラー:', error)
@@ -288,6 +302,7 @@ export const useAppStore = create(
                 type: 'system',
                 content: 'ネットワークエラーが発生しました。'
               })
+              return false
             } finally {
               // タイピング状態を終了
               get().actions.setIsTyping(false)

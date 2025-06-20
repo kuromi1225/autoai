@@ -22,7 +22,8 @@ export default defineConfig({
       }
     },
     target: 'esnext',
-    minify: 'esbuild'
+    minify: false, // 開発用にminifyを無効化
+    sourcemap: true // ソースマップを有効化
   },
   server: {
     host: '0.0.0.0',
