@@ -155,8 +155,51 @@ export const useAppStore = create(
           // バックエンドヘルスチェック
           checkBackendHealth: async () => {
             try {
+<<<<<<< HEAD
               const response = await fetch('http://localhost:8766/health')
               const data = await response.json()
+=======
+              const response = await fetch('/api/health');
+              set(state => { 
+                state.systemStatus.backend_connected = response.ok;
+              });
+            } catch (error) {
+              set(state => { 
+                state.systemStatus.backend_connected = false; 
+              });
+            }
+          },
+
+          // --- チャット・計画関連 ---
+          setInputMessage: (message) => set({ inputMessage: message }),
+          addMessage: (message) => {
+            const newMessage = { ...message, id: Date.now(), timestamp: new Date() };
+            set((state) => {
+              state.messages.push(newMessage);
+            });
+          },
+          setIsTyping: (typing) => set({ isTyping: typing }),
+          setShowPlanDialog: (show) => set({ showPlanDialog: show }),
+          setCurrentPlan: (plan) => set({ currentPlan: plan }),
+
+          sendMessage: async (messageContent) => {
+            if (!(messageContent || '').trim()) return;
+
+            get().actions.addMessage({ type: 'user', content: messageContent });
+            get().actions.setIsTyping(true);
+            
+            try {
+              const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${get().authToken}`
+                },
+                body: JSON.stringify({ message: messageContent }),
+              });
+
+              if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+>>>>>>> 7c55bcdf1839a1b8bd73ca231f50811d67da7bf4
               
               set((state) => {
                 state.systemStatus.backend_connected = response.ok

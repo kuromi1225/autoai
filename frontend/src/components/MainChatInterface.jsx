@@ -56,6 +56,7 @@ const MainChatInterface = () => {
       }
     }
     
+<<<<<<< HEAD
     checkHealth()
     const interval = setInterval(checkHealth, 30000) // 30秒ごと
     
@@ -66,6 +67,12 @@ const MainChatInterface = () => {
     if (!inputMessage?.trim() || isTyping) return
 
     const message = inputMessage.trim()
+=======
+    if (!(inputMessage || '').trim()) return
+    
+    const message = (inputMessage || '').trim()
+    actions.setInputMessage('')
+>>>>>>> 7c55bcdf1839a1b8bd73ca231f50811d67da7bf4
     
     // メッセージをクリア
     if (actions?.setInputMessage) {

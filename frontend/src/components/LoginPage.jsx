@@ -52,7 +52,7 @@ const LoginPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: username.trim(),
+          username: (username || '').trim(),
           password: password
         })
       })
