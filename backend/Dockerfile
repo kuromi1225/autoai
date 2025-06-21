@@ -21,18 +21,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM base as production
 
 # Create non-root user
-RUN useradd --create-home --shell /bin/bash devin
-RUN chown -R devin:devin /app
+RUN useradd --create-home --shell /bin/bash autoai
+RUN chown -R autoai:autoai /app
 
 # Copy application code
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/models/cache /app/workspace
-RUN chown -R devin:devin /app
+RUN mkdir -p /app/logs /app/models/cache /app/workspace /tmp/flask_instance
+RUN chown -R autoai:autoai /app /tmp/flask_instance
 
 # Switch to non-root user
-USER devin
+USER autoai
 
 # Set environment variables
 ENV PYTHONPATH=/app
