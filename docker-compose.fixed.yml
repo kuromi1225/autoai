@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  # バックエンド API（修正版）
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.fixed
+    container_name: autoai-backend-v3
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      DATABASE_URL: sqlite:///data/autoai.db
+      SECRET_KEY: autoai_v3_production_secret_2024
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    ports:
+      - "5000:5000"  # 直接アクセス用
+    networks:
+      - autoai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    # セキュリティ設定を緩和（開発・テスト用）
+    security_opt:
+      - no-new-privileges:true
+
+  # フロントエンド
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: autoai-frontend-v3
+    environment:
+      REACT_APP_API_URL: http://localhost:5000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"  # フロントエンド直接アクセス用
+    networks:
+      - autoai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Nginx リバースプロキシ（オプション）
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: autoai-nginx-v3
+    ports:
+      - "8080:80"      # 統合アクセスポート
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - autoai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - nginx
+
+  # PostgreSQL データベース（オプション）
+  postgres:
+    image: postgres:15-alpine
+    container_name: autoai-postgres-v3
+    environment:
+      POSTGRES_DB: autoai_v3
+      POSTGRES_USER: autoai
+      POSTGRES_PASSWORD: autoai_password_2024
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - autoai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autoai -d autoai_v3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - postgres
+
+  # Redis（オプション）
+  redis:
+    image: redis:7-alpine
+    container_name: autoai-redis-v3
+    command: redis-server --requirepass autoai_redis_password_2024
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - autoai-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "autoai_redis_password_2024", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - redis
+
+# 永続化ボリューム
+volumes:
+  backend_data:
+    driver: local
+  backend_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ネットワーク
+networks:
+  autoai-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+

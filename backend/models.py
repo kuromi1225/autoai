@@ -39,7 +39,7 @@ class Task(db.Model):
     completed_at = db.Column(db.DateTime)
     
     # JSON フィールド
-    metadata = db.Column(db.JSON, default=dict)  # 追加のメタデータ
+    task_metadata = db.Column(db.JSON, default=dict)  # 追加のメタデータ
     
     # リレーション
     plans = db.relationship('Plan', backref='task', lazy=True, cascade='all, delete-orphan')
@@ -57,7 +57,7 @@ class Task(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'metadata': self.metadata
+            'metadata': self.task_metadata
         }
 
 class Plan(db.Model):
@@ -143,7 +143,7 @@ class ExecutionLog(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     
     # JSON フィールド
-    metadata = db.Column(db.JSON, default=dict)  # 追加のメタデータ
+    log_metadata = db.Column(db.JSON, default=dict)  # 追加のメタデータ
     
     def to_dict(self):
         return {
@@ -153,7 +153,7 @@ class ExecutionLog(db.Model):
             'log_level': self.log_level,
             'message': self.message,
             'timestamp': self.timestamp.isoformat() if self.timestamp else None,
-            'metadata': self.metadata
+            'metadata': self.log_metadata
         }
 
 class Session(db.Model):
@@ -199,7 +199,7 @@ class Message(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     
     # JSON フィールド
-    metadata = db.Column(db.JSON, default=dict)  # 追加のメタデータ
+    message_metadata = db.Column(db.JSON, default=dict)  # 追加のメタデータ
     
     def to_dict(self):
         return {
@@ -208,7 +208,7 @@ class Message(db.Model):
             'role': self.role,
             'content': self.content,
             'timestamp': self.timestamp.isoformat() if self.timestamp else None,
-            'metadata': self.metadata
+            'metadata': self.message_metadata
         }
 
 class Tool(db.Model):
