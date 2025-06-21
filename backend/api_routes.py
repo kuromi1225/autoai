@@ -53,9 +53,12 @@ def register_api_routes(app, socketio):
             db.session.add(task)
             db.session.commit()
             
+            # repo_url を取得
+            repo_url = data.get('repo_url')
+
             # タスクをキューに追加
             if task_queue:
-                asyncio.create_task(task_queue.add_task(task))
+                asyncio.create_task(task_queue.add_task(task, repo_url)) # repo_url を渡す
             
             return jsonify({
                 'success': True,

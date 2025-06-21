@@ -412,6 +412,7 @@ class ToolManager:
         self.register_tool(FileTool())
         self.register_tool(CodeTool())
         self.register_tool(APITool())
+        self.register_tool(GitTool()) # GitToolを追加
     
     def register_tool(self, tool: BaseTool):
         """ツールを登録する"""
@@ -449,3 +450,91 @@ class ToolManager:
         
         return result
 
+class GitTool(BaseTool):
+    """Git操作ツール"""
+
+    def __init__(self):
+        super().__init__(
+            name="git",
+            description="Gitリポジトリの操作を行う",
+            category="git"
+        )
+        # git_tool.pyから関数をインポート
+        from backend.tools import git_tool as gt
+        self.git_functions = {
+            "clone": gt.clone_repository,
+            "commit": gt.commit,
+            "push": gt.push,
+        }
+
+    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """Git操作を実行する"""
+
+        action = parameters.get('action')
+
+        try:
+            if action == 'clone':
+                repo_url = parameters.get('repo_url')
+                directory = parameters.get('directory', '.')
+                result_message = self.git_functions["clone"](repo_url, directory)
+                success = "Error" not in result_message
+                return {
+                    'success': success,
+                    'action': 'clone',
+                    'repo_url': repo_url,
+                    'directory': directory,
+                    'message': result_message
+                }
+            elif action == 'commit':
+                message = parameters.get('message')
+                result_message = self.git_functions["commit"](message)
+                success = "Error" not in result_message
+                return {
+                    'success': success,
+                    'action': 'commit',
+                    'message': result_message
+                }
+            elif action == 'push':
+                result_message = self.git_functions["push"]()
+                success = "Error" not in result_message
+                return {
+                    'success': success,
+                    'action': 'push',
+                    'message': result_message
+                }
+            else:
+                raise ValueError(f"Unknown git action: {action}")
+
+        except Exception as e:
+            logger.error(f"Git tool execution failed: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'tool': self.name
+            }
+
+    def get_schema(self) -> Dict[str, Any]:
+        """Gitツールのスキーマ"""
+        return {
+            'type': 'object',
+            'properties': {
+                'action': {
+                    'type': 'string',
+                    'enum': ['clone', 'commit', 'push'],
+                    'description': '実行するGitアクション'
+                },
+                'repo_url': {
+                    'type': 'string',
+                    'description': 'クローンするリポジトリのURL (cloneアクション用)'
+                },
+                'directory': {
+                    'type': 'string',
+                    'description': 'クローン先のディレクトリ名 (cloneアクション用、オプション)'
+                },
+                'message': {
+                    'type': 'string',
+                    'description': 'コミットメッセージ (commitアクション用)'
+                }
+            },
+            'required': ['action']
+        }
