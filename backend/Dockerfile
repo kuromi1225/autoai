@@ -43,11 +43,11 @@ ENV FLASK_ENV=production
 # Expose port
 EXPOSE 5000
 
-# Health check
+# Health check - 修正されたエンドポイント
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:5000/api/health || exit 1
 
-# Start application with Gunicorn and Eventlet
-CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5000", "app:app"]
+# Start application with Gunicorn and Eventlet - 修正版アプリ使用
+CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5000", "app:application"]
 
 
