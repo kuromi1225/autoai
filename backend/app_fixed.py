@@ -50,7 +50,6 @@ system_stats = {
     "version": "3.0.0"
 }
 
-@app.before_first_request
 def create_tables():
     """データベーステーブル作成"""
     try:
@@ -59,6 +58,10 @@ def create_tables():
             logger.info("Database tables created successfully")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
+
+# アプリケーション初期化
+with app.app_context():
+    create_tables()
 
 # ===== API エンドポイント =====
 
